@@ -1,6 +1,7 @@
 import requests
 import json
 from os import system, name
+import time
 from prettytable import PrettyTable
 
 # Clear screen
@@ -11,6 +12,13 @@ def clear_screen():
     # For mac and linux, here os.name is 'posix'
     else:
         _ = system('clear')
+
+# Exit with an error description
+def exit_error(description):
+    clear_screen()
+    print("The following error occured: " + str(description))
+    input("Enter to exit...")
+    exit()
 
 # Use API to search for movies based on user input
 def search_movies(movie_title):
@@ -23,9 +31,23 @@ def search_movies(movie_title):
         "Content-Type": "application/json;charset=utf-8"
     }
 
-    # Send get request to API
-    response = requests.get(url, headers=headers).json()
-    return response
+    try:
+        # Send get request to API
+        response = requests.get(url, headers=headers)
+        # If request fails, wait and try again for max 5 times
+        retries = 0
+        max_retriess = 5
+        while response.status_code != 200 and retries <= max_retriess:
+            retries += 1
+            time.sleep(0.5)
+            response = requests.get(url, headers=headers)
+        # If the status code is still not 200 after 5 retries, exit with an error description
+        if response.status_code !=  200:
+            exit_error("Can't connect with API")
+    except Exception as ex:
+        exit_error(ex)
+
+    return response.json()
 
 # get all genres with the given genre ids
 def get_genres(genre_ids):
@@ -38,9 +60,23 @@ def get_genres(genre_ids):
         "Content-Type": "application/json;charset=utf-8"
     }
 
-    # Send get request to API
-    all_genres = requests.get(url, headers=headers).json()["genres"]
-
+    try:
+        # Send get request to API
+        response = requests.get(url, headers=headers)
+        # If request fails, wait and try again for max 5 times
+        retries = 0
+        max_retriess = 5
+        while response.status_code != 200 and retries <= max_retriess:
+            retries += 1
+            time.sleep(0.5)
+            response = requests.get(url, headers=headers)
+        # If the status code is still not 200 after 5 retries, exit with an error description
+        if response.status_code !=  200:
+            exit_error("Can't connect with API")
+    except Exception as ex:
+        exit_error(ex)
+    
+    all_genres = response.json()["genres"]
     # Return all genre names matching the genre ids of the movie
     return [genre["name"] for genre in all_genres if genre["id"] in genre_ids]
 
@@ -53,8 +89,8 @@ def get_movie_info(movies):
     # Create arrays with all information needed to display later
     for movie in movies["results"]:
         counter += 1
-        movie_info.append([counter, movie["original_title"], (movie["release_date"] if "release_date" in movie else "")])
-        movie_details.append([movie["original_title"], (movie["release_date"] if "release_date" in movie else ""), (movie["genre_ids"] if "genre_ids" in movie else ""), (movie["overview"] if "overview" in movie else ""), (movie["original_language"] if "original_language" in movie else ""), (movie["adult"] if "adult" in movie else ""), (movie["popularity"] if "popularity" in movie else ""), (movie["vote_average"] if "release_date" in movie else ""), (movie["vote_count"] if "vote_count" in movie else "")])
+        movie_info.append([counter, (movie["original_title"] if "original_title" in movie else ""), (movie["release_date"] if "release_date" in movie else "")])
+        movie_details.append([(movie["original_title"] if "original_title" in movie else ""), (movie["release_date"] if "release_date" in movie else ""), (movie["genre_ids"] if "genre_ids" in movie else ""), (movie["overview"] if "overview" in movie else ""), (movie["original_language"] if "original_language" in movie else ""), (movie["adult"] if "adult" in movie else ""), (movie["popularity"] if "popularity" in movie else ""), (movie["vote_average"] if "release_date" in movie else ""), (movie["vote_count"] if "vote_count" in movie else "")])
     return movie_info, movie_details
 
 # Print info of found movies in a table format
